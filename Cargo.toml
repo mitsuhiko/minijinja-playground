@@ -1,0 +1,27 @@
+[package]
+name = "minijinja-playground"
+version = "0.1.0"
+authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+wasm-bindgen = "0.2.62"
+minijinja = { version = "0.27.0", features = ["source", "json", "urlencode", "preserve_order"] }
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.6", optional = true }
+serde_json = "1.0.91"
+serde-wasm-bindgen = "0.4.5"
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
