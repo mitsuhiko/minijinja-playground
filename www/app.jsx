@@ -40,10 +40,28 @@ const Editor = ({
   isHtml,
   onTemplateChange,
   onTemplateContextChange,
-  onToggleHtml
+  onToggleHtml,
 }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [mouseBase, setMouseBase] = useState(0);
+  const [width, setWidth] = useState(350);
+  const [widthBase, setWidthBase] = useState(0);
+
   return (
-    <div style={{ display: "flex", height: "500px" }}>
+    <div
+      style={{ display: "flex", height: "60vh" }}
+      onMouseMove={(e) => {
+        if (isDragging) {
+          const newWidth = widthBase - (e.pageX - mouseBase);
+          setWidth(newWidth);
+        }
+      }}
+      onMouseUp={(e) => {
+        setIsDragging(false);
+        setMouseBase(0);
+        setWidthBase(0);
+      }}
+    >
       <div style={{ flex: "1" }}>
         <AceEditor
           mode="nunjucks"
@@ -68,7 +86,43 @@ const Editor = ({
           editorProps={{ $blockScrolling: true }}
         />
       </div>
-      <div style={{ flex: "1", maxWidth: "400px" }}>
+      <div
+        style={{
+          flex: "1",
+          minWidth: "3px",
+          maxWidth: "3px",
+          background: "black",
+          cursor: "ew-resize",
+        }}
+        onMouseDown={(e) => {
+          setIsDragging(true);
+          setMouseBase(e.pageX);
+          setWidthBase(width);
+        }}
+      />
+      <div
+        style={{
+          flex: "1",
+          flexBasis: width + "px",
+          flexGrow: "0",
+          flexShrink: "0",
+        }}
+      >
+        <label
+          style={{
+            position: "absolute",
+            right: "10px",
+            top: "10px",
+            zIndex: 1000
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={isHtml}
+            onChange={(evt) => onToggleHtml(evt.target.checked)}
+          />
+          HTML Mode
+        </label>
         <AceEditor
           mode="json"
           theme="cobalt"
@@ -93,14 +147,6 @@ const Editor = ({
           editorProps={{ $blockScrolling: true }}
         />
       </div>
-      <label style={{ padding: "4px 10px" }}>
-        <input
-          type="checkbox"
-          checked={isHtml}
-          onChange={(evt) => onToggleHtml(evt.target.checked)}
-        />
-        HTML Mode
-      </label>
     </div>
   );
 };
@@ -109,15 +155,16 @@ const Output = ({ result, error }) => {
   return (
     <pre
       style={{
-        background: error ? "#590523" : "#336699",
+        background: error ? "#590523" : "rgb(41, 74, 119)",
         color: "white",
         margin: "0",
         padding: "12px 16px",
         wordWrap: "normal",
         whiteSpace: "pre-wrap",
         overflow: "auto",
+        height: "calc(40vh - 24px)",
         font: '"Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace',
-        fontSize: FONT_SIZE + 'px'
+        fontSize: FONT_SIZE + "px",
       }}
     >
       {(result || error || "") + ""}
