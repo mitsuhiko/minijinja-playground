@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as wasm from "minijinja-playground";
 
 import AceEditor from "react-ace";
@@ -34,6 +34,26 @@ const DEFAULT_TEMPLATE = `\
 </main>
 `;
 
+function getSetting(key, defaultValue) {
+  if (!localStorage) {
+    return defaultValue;
+  }
+  const setting = localStorage.getItem("minijinja-playground:" + key);
+  if (setting === null) {
+    return defaultValue;
+  } else {
+    return JSON.parse(setting);
+  }
+}
+
+function setSetting(key, value) {
+  if (localStorage) {
+    try {
+      localStorage.setItem("minijinja-playground:" + key, JSON.stringify(value));
+    } catch (err) {}
+  }
+}
+
 const Editor = ({
   template,
   templateContext,
@@ -41,19 +61,21 @@ const Editor = ({
   onTemplateChange,
   onTemplateContextChange,
   onToggleHtml,
+  outputHeight,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [mouseBase, setMouseBase] = useState(0);
-  const [width, setWidth] = useState(350);
+  const [width, setWidth] = useState(() => getSetting("contextWidth", 350));
   const [widthBase, setWidthBase] = useState(0);
 
   return (
     <div
-      style={{ display: "flex", height: "60vh" }}
+      style={{ display: "flex", height: `calc(100vh - ${outputHeight}px)` }}
       onMouseMove={(e) => {
         if (isDragging) {
           const newWidth = widthBase - (e.pageX - mouseBase);
           setWidth(newWidth);
+          setSetting("contextWidth", 350);
         }
       }}
       onMouseUp={(e) => {
@@ -89,8 +111,8 @@ const Editor = ({
       <div
         style={{
           flex: "1",
-          minWidth: "3px",
-          maxWidth: "3px",
+          minWidth: "2px",
+          maxWidth: "2px",
           background: "black",
           cursor: "ew-resize",
         }}
@@ -151,7 +173,7 @@ const Editor = ({
   );
 };
 
-const Output = ({ result, error }) => {
+const Output = ({ result, error, height }) => {
   return (
     <pre
       style={{
@@ -162,7 +184,7 @@ const Output = ({ result, error }) => {
         wordWrap: "normal",
         whiteSpace: "pre-wrap",
         overflow: "auto",
-        height: "calc(40vh - 24px)",
+        height: `calc(${height}px - 26px)`,
         font: '"Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace',
         fontSize: FONT_SIZE + "px",
       }}
@@ -178,6 +200,10 @@ export function App({}) {
   const [templateContext, setTemplateContext] = useState(() =>
     JSON.stringify(DEFAULT_CONTEXT, null, 2)
   );
+  const [isDragging, setIsDragging] = useState(false);
+  const [mouseBase, setMouseBase] = useState(0);
+  const [outputHeightBase, setOutputHeightBase] = useState(0);
+  const [outputHeight, setOutputHeight] = useState(() => getSetting("outputHeight", 200));
 
   let result;
   let error;
@@ -193,7 +219,20 @@ export function App({}) {
   }
 
   return (
-    <div>
+    <div
+      onMouseMove={(e) => {
+        if (isDragging) {
+          const newHeight = outputHeightBase - (e.pageY - mouseBase);
+          setOutputHeight(newHeight);
+          setSetting("outputHeight", newHeight);
+        }
+      }}
+      onMouseUp={(e) => {
+        setIsDragging(false);
+        setMouseBase(0);
+        setOutputHeightBase(0);
+      }}
+    >
       <Editor
         template={template}
         templateContext={templateContext}
@@ -201,8 +240,21 @@ export function App({}) {
         onTemplateContextChange={setTemplateContext}
         isHtml={isHtml}
         onToggleHtml={setIsHtml}
+        outputHeight={outputHeight}
       />
-      <Output result={result} error={error} />
+      <div
+        style={{
+          height: "2px",
+          background: "black",
+          cursor: "ns-resize",
+        }}
+        onMouseDown={(e) => {
+          setIsDragging(true);
+          setMouseBase(e.pageY);
+          setOutputHeightBase(outputHeight);
+        }}
+      />
+      <Output result={result} error={error} height={outputHeight} />
     </div>
   );
 }
