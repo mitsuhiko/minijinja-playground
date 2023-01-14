@@ -57,10 +57,10 @@ function setSetting(key, value) {
 const Editor = ({
   template,
   templateContext,
-  isHtml,
+  mode,
   onTemplateChange,
   onTemplateContextChange,
-  onToggleHtml,
+  onSetMode,
   outputHeight,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -130,21 +130,20 @@ const Editor = ({
           flexShrink: "0",
         }}
       >
-        <label
+        <select
           style={{
             position: "absolute",
             right: "10px",
             top: "10px",
             zIndex: 1000
           }}
+          value={mode}
+          onChange={(evt) => onSetMode(evt.target.value)}
         >
-          <input
-            type="checkbox"
-            checked={isHtml}
-            onChange={(evt) => onToggleHtml(evt.target.checked)}
-          />
-          HTML Mode
-        </label>
+          <option value="html">HTML</option>
+          <option value="json">JSON</option>
+          <option value="text">Text</option>
+        </select>
         <AceEditor
           mode="json"
           theme="cobalt"
@@ -195,7 +194,7 @@ const Output = ({ result, error, height }) => {
 };
 
 export function App({}) {
-  const [isHtml, setIsHtml] = useState(true);
+  const [mode, setMode] = useState('html');
   const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
   const [templateContext, setTemplateContext] = useState(() =>
     JSON.stringify(DEFAULT_CONTEXT, null, 2)
@@ -207,7 +206,7 @@ export function App({}) {
 
   let result;
   let error;
-  let templateName = isHtml ? "template.html" : "template.txt";
+  let templateName = `template.${mode}`;
   try {
     result = wasm
       .create_env({
@@ -238,8 +237,8 @@ export function App({}) {
         templateContext={templateContext}
         onTemplateChange={setTemplate}
         onTemplateContextChange={setTemplateContext}
-        isHtml={isHtml}
-        onToggleHtml={setIsHtml}
+        mode={mode}
+        onSetMode={setMode}
         outputHeight={outputHeight}
       />
       <div
