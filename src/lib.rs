@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
+use minijinja::machinery;
 use minijinja::{Environment, Source};
 
 #[wasm_bindgen]
@@ -21,7 +22,6 @@ pub struct JsExposedEnv {
 }
 
 fn annotate_error(err: minijinja::Error) -> JsError {
-    dbg!(&err);
     JsError::new(&format!("{:#}", err))
 }
 
@@ -47,4 +47,31 @@ pub fn create_env(templates: JsValue) -> Result<JsExposedEnv, JsError> {
     }
     env.set_source(source);
     Ok(JsExposedEnv { env })
+}
+
+#[wasm_bindgen]
+pub fn tokenize(template: &str) -> Result<JsValue, JsError> {
+    let mut rv = Vec::new();
+    for result in machinery::tokenize(template, false) {
+        let (token, span) = result?;
+        rv.push((token, span));
+    }
+    Ok(serde_wasm_bindgen::to_value(&rv)?)
+}
+
+#[wasm_bindgen]
+pub fn parse(template: &str) -> Result<JsValue, JsError> {
+    let ast = machinery::parse(template, "<string>").map_err(annotate_error)?;
+    Ok(serde_wasm_bindgen::to_value(&ast)?)
+}
+
+#[wasm_bindgen]
+pub fn instructions(template: &str) -> Result<JsValue, JsError> {
+    let tmpl = machinery::CompiledTemplate::from_name_and_source("<stirng>", template)
+        .map_err(annotate_error)?;
+    Ok(serde_wasm_bindgen::to_value(
+        &(0..tmpl.instructions.len())
+            .map(|idx| tmpl.instructions.get(idx).unwrap())
+            .collect::<Vec<_>>(),
+    )?)
 }

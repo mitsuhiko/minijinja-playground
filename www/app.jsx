@@ -49,7 +49,10 @@ function getSetting(key, defaultValue) {
 function setSetting(key, value) {
   if (localStorage) {
     try {
-      localStorage.setItem("minijinja-playground:" + key, JSON.stringify(value));
+      localStorage.setItem(
+        "minijinja-playground:" + key,
+        JSON.stringify(value)
+      );
     } catch (err) {}
   }
 }
@@ -135,7 +138,7 @@ const Editor = ({
             position: "absolute",
             right: "10px",
             top: "10px",
-            zIndex: 1000
+            zIndex: 1000,
           }}
           value={mode}
           onChange={(evt) => onSetMode(evt.target.value)}
@@ -172,41 +175,34 @@ const Editor = ({
   );
 };
 
-const Output = ({ result, error, height }) => {
+const OUTPUT_PRE_STYLES = {
+  background: "rgb(41, 74, 119)",
+  color: "white",
+  margin: "0",
+  padding: "12px 16px",
+  wordWrap: "normal",
+  whiteSpace: "pre-wrap",
+  fontFamily: "var(--code-font-family)",
+  fontSize: "var(--code-font-size)",
+};
+
+const Error = ({ error }) => {
   return (
     <pre
       style={{
-        background: error ? "#590523" : "rgb(41, 74, 119)",
-        color: "white",
-        margin: "0",
-        padding: "12px 16px",
-        wordWrap: "normal",
-        whiteSpace: "pre-wrap",
-        overflow: "auto",
-        height: `calc(${height}px - 26px)`,
-        font: '"Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace',
-        fontSize: FONT_SIZE + "px",
+        ...OUTPUT_PRE_STYLES,
+        background: "#590523",
+        height: "calc(100% - 24px)",
       }}
     >
-      {(result || error || "") + ""}
+      {error + ""}
     </pre>
   );
 };
 
-export function App({}) {
-  const [mode, setMode] = useState('html');
-  const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
-  const [templateContext, setTemplateContext] = useState(() =>
-    JSON.stringify(DEFAULT_CONTEXT, null, 2)
-  );
-  const [isDragging, setIsDragging] = useState(false);
-  const [mouseBase, setMouseBase] = useState(0);
-  const [outputHeightBase, setOutputHeightBase] = useState(0);
-  const [outputHeight, setOutputHeight] = useState(() => getSetting("outputHeight", 200));
-
+const RenderOutput = ({ mode, template, templateContext }) => {
+  const templateName = `template.${mode}`;
   let result;
-  let error;
-  let templateName = `template.${mode}`;
   try {
     result = wasm
       .create_env({
@@ -214,8 +210,136 @@ export function App({}) {
       })
       .render(templateName, JSON.parse(templateContext));
   } catch (err) {
-    error = err;
+    return <Error error={err} />;
   }
+  return <pre style={OUTPUT_PRE_STYLES}>{(result || "") + ""}</pre>;
+};
+
+const TokenOutput = ({ template }) => {
+  let result;
+  try {
+    result = wasm.tokenize(template);
+  } catch (err) {
+    return <Error error={err} />;
+  }
+  return (
+    <table style={{ margin: "12px", maxWidth: "100%" }}>
+      {result.map(([token, span]) => {
+        return (
+          <tr>
+            <td>
+              <code style={{ fontWeight: "bold", paddingRight: "10px" }}>
+                {token.name}
+              </code>
+            </td>
+            <td>
+              {token.payload !== undefined && (
+                <code style={{ fontWeight: "bold", paddingRight: "10px" }}>
+                  {JSON.stringify(token.payload)}
+                </code>
+              )}
+            </td>
+            <td>
+              <code>{`${span.start_line}:${span.start_col}-${span.end_line}:${span.end_col}`}</code>
+            </td>
+          </tr>
+        );
+      })}
+    </table>
+  );
+};
+
+const AstOutput = ({ template }) => {
+  let result;
+  try {
+    result = wasm.parse(template);
+  } catch (err) {
+    return <Error error={err} />;
+  }
+  return <pre style={OUTPUT_PRE_STYLES}>{JSON.stringify(result, false, 2)}</pre>;
+};
+
+const InstructionsOutput = ({ template }) => {
+  let result;
+  try {
+    result = wasm.instructions(template);
+  } catch (err) {
+    return <Error error={err} />;
+  }
+  return (
+    <table style={{ margin: "12px", maxWidth: "100%" }}>
+      {result.map((instr, idx) => {
+        return (
+          <tr>
+            <td style={{ paddingRight: "10px" }}>{idx}</td>
+            <td>
+              <code style={{ fontWeight: "bold", paddingRight: "10px" }}>
+                {instr.op}
+              </code>
+            </td>
+            <td>
+              <code>{JSON.stringify(instr.arg)}</code>
+            </td>
+          </tr>
+        );
+      })}
+    </table>
+  );
+};
+
+const Output = ({ mode, template, templateContext, height }) => {
+  const [outputMode, setOutputMode] = useState("render");
+  return (
+    <div
+      style={{
+        wordWrap: "normal",
+        height: `${height}px`,
+        overflow: "auto",
+      }}
+    >
+      <select
+        style={{
+          position: "absolute",
+          right: "10px",
+          top: `calc(100vh - ${height}px + 12px)`,
+          zIndex: 1000,
+        }}
+        value={outputMode}
+        onChange={(evt) => setOutputMode(evt.target.value)}
+      >
+        <option value="render">Rendered Output</option>
+        <option value="tokens">Tokens</option>
+        <option value="ast">AST</option>
+        <option value="instructions">Instructions</option>
+      </select>
+      {outputMode === "render" && (
+        <RenderOutput
+          mode={mode}
+          template={template}
+          templateContext={templateContext}
+        />
+      )}
+      {outputMode === "tokens" && <TokenOutput template={template} />}
+      {outputMode === "ast" && <AstOutput template={template} />}
+      {outputMode === "instructions" && (
+        <InstructionsOutput template={template} />
+      )}
+    </div>
+  );
+};
+
+export function App({}) {
+  const [mode, setMode] = useState("html");
+  const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
+  const [templateContext, setTemplateContext] = useState(() =>
+    JSON.stringify(DEFAULT_CONTEXT, null, 2)
+  );
+  const [isDragging, setIsDragging] = useState(false);
+  const [mouseBase, setMouseBase] = useState(0);
+  const [outputHeightBase, setOutputHeightBase] = useState(0);
+  const [outputHeight, setOutputHeight] = useState(() =>
+    getSetting("outputHeight", 200)
+  );
 
   return (
     <div
@@ -253,7 +377,12 @@ export function App({}) {
           setOutputHeightBase(outputHeight);
         }}
       />
-      <Output result={result} error={error} height={outputHeight} />
+      <Output
+        mode={mode}
+        template={template}
+        templateContext={templateContext}
+        height={outputHeight}
+      />
     </div>
   );
 }
