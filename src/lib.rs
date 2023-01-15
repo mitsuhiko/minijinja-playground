@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use wasm_bindgen::prelude::*;
 
 use minijinja::machinery;
@@ -65,13 +65,23 @@ pub fn parse(template: &str) -> Result<JsValue, JsError> {
     Ok(serde_wasm_bindgen::to_value(&ast)?)
 }
 
+fn convert_instructions<'a, 'source>(
+    instructions: &'a machinery::Instructions<'source>,
+) -> Vec<&'a machinery::Instruction<'source>> {
+    (0..instructions.len())
+        .map(|idx| instructions.get(idx).unwrap())
+        .collect::<Vec<_>>()
+}
+
 #[wasm_bindgen]
 pub fn instructions(template: &str) -> Result<JsValue, JsError> {
     let tmpl = machinery::CompiledTemplate::from_name_and_source("<stirng>", template)
         .map_err(annotate_error)?;
-    Ok(serde_wasm_bindgen::to_value(
-        &(0..tmpl.instructions.len())
-            .map(|idx| tmpl.instructions.get(idx).unwrap())
-            .collect::<Vec<_>>(),
-    )?)
+    let mut all = BTreeMap::new();
+    all.insert("<root>", convert_instructions(&tmpl.instructions));
+    for (block_name, instr) in tmpl.blocks.iter() {
+        all.insert(&block_name, convert_instructions(instr));
+    }
+
+    Ok(serde_wasm_bindgen::to_value(&all)?)
 }

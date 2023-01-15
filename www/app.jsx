@@ -256,32 +256,45 @@ const AstOutput = ({ template }) => {
   } catch (err) {
     return <Error error={err} />;
   }
-  return <pre style={OUTPUT_PRE_STYLES}>{JSON.stringify(result, false, 2)}</pre>;
+  return (
+    <pre style={OUTPUT_PRE_STYLES}>{JSON.stringify(result, false, 2)}</pre>
+  );
 };
 
 const InstructionsOutput = ({ template }) => {
   let result;
   try {
-    result = wasm.instructions(template);
+    result = Array.from(wasm.instructions(template).entries());
+    result.sort((a, b) => {
+      return a[0].localeCompare(b[0]);
+    });
   } catch (err) {
     return <Error error={err} />;
   }
+  console.log(result);
   return (
     <table style={{ margin: "12px", maxWidth: "100%" }}>
-      {result.map((instr, idx) => {
-        return (
+      {result.map(([blockName, instructions]) => {
+        return [
           <tr>
-            <td style={{ paddingRight: "10px" }}>{idx}</td>
-            <td>
-              <code style={{ fontWeight: "bold", paddingRight: "10px" }}>
-                {instr.op}
-              </code>
-            </td>
-            <td>
-              <code>{JSON.stringify(instr.arg)}</code>
-            </td>
-          </tr>
-        );
+            <th colspan="3" style={{textAlign: 'left'}}>{blockName}:</th>
+          </tr>,
+          ...instructions.map((instr, idx) => {
+            return (
+              <tr>
+                <td style={{ paddingRight: "10px" }}>{idx}</td>
+                <td>
+                  <code style={{ fontWeight: "bold", paddingRight: "10px" }}>
+                    {instr.op}
+                  </code>
+                </td>
+                <td>
+                  <code>{JSON.stringify(instr.arg)}</code>
+                </td>
+              </tr>
+            );
+          }),
+        ];
       })}
     </table>
   );
