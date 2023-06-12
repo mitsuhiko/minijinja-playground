@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use wasm_bindgen::prelude::*;
 
 use minijinja::machinery;
-use minijinja::{Environment, Source};
+use minijinja::Environment;
 
 #[wasm_bindgen]
 pub fn set_panic_hook() {
@@ -39,20 +39,17 @@ pub fn create_env(templates: JsValue) -> Result<JsExposedEnv, JsError> {
     let templates: HashMap<String, String> = serde_wasm_bindgen::from_value(templates)?;
     let mut env = Environment::new();
     env.set_debug(true);
-    let mut source = Source::new();
     for (name, template) in templates.into_iter() {
-        source
-            .add_template(name, template)
+        env.add_template_owned(name, template)
             .map_err(annotate_error)?;
     }
-    env.set_source(source);
     Ok(JsExposedEnv { env })
 }
 
 #[wasm_bindgen]
 pub fn tokenize(template: &str) -> Result<JsValue, JsError> {
     let mut rv = Vec::new();
-    for result in machinery::tokenize(template, false) {
+    for result in machinery::tokenize(template, false, Default::default()) {
         let (token, span) = result?;
         rv.push((token, span));
     }
@@ -75,7 +72,7 @@ fn convert_instructions<'a, 'source>(
 
 #[wasm_bindgen]
 pub fn instructions(template: &str) -> Result<JsValue, JsError> {
-    let tmpl = machinery::CompiledTemplate::from_name_and_source("<stirng>", template)
+    let tmpl = machinery::CompiledTemplate::new("<string>", template, Default::default())
         .map_err(annotate_error)?;
     let mut all = BTreeMap::new();
     all.insert("<root>", convert_instructions(&tmpl.instructions));
