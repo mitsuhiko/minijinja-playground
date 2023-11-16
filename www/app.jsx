@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import * as wasm from "minijinja-playground";
 
 import AceEditor from "react-ace";
