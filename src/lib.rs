@@ -1,4 +1,7 @@
+use minijinja::machinery::TemplateConfig;
+use minijinja::AutoEscape;
 use std::collections::{BTreeMap, HashMap};
+use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
 use minijinja::machinery;
@@ -72,8 +75,16 @@ fn convert_instructions<'a, 'source>(
 
 #[wasm_bindgen]
 pub fn instructions(template: &str) -> Result<JsValue, JsError> {
-    let tmpl = machinery::CompiledTemplate::new("<string>", template, Default::default(), true)
-        .map_err(annotate_error)?;
+    let tmpl = machinery::CompiledTemplate::new(
+        "<string>",
+        template,
+        &TemplateConfig {
+            syntax_config: machinery::SyntaxConfig,
+            keep_trailing_newline: false,
+            default_auto_escape: Arc::new(|_| AutoEscape::None),
+        },
+    )
+    .map_err(annotate_error)?;
     let mut all = BTreeMap::new();
     all.insert("<root>", convert_instructions(&tmpl.instructions));
     for (block_name, instr) in tmpl.blocks.iter() {
