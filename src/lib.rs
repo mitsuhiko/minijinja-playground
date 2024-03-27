@@ -52,7 +52,7 @@ pub fn create_env(templates: JsValue) -> Result<JsExposedEnv, JsError> {
 #[wasm_bindgen]
 pub fn tokenize(template: &str) -> Result<JsValue, JsError> {
     let mut rv = Vec::new();
-    for result in machinery::tokenize(template, false, Default::default()) {
+    for result in machinery::tokenize(template, false, Default::default(), Default::default()) {
         let (token, span) = result?;
         rv.push((token, span));
     }
@@ -61,7 +61,8 @@ pub fn tokenize(template: &str) -> Result<JsValue, JsError> {
 
 #[wasm_bindgen]
 pub fn parse(template: &str) -> Result<JsValue, JsError> {
-    let ast = machinery::parse(template, "<string>").map_err(annotate_error)?;
+    let ast = machinery::parse(template, "<string>", Default::default(), Default::default())
+        .map_err(annotate_error)?;
     Ok(serde_wasm_bindgen::to_value(&ast)?)
 }
 
@@ -80,7 +81,7 @@ pub fn instructions(template: &str) -> Result<JsValue, JsError> {
         template,
         &TemplateConfig {
             syntax_config: machinery::SyntaxConfig,
-            keep_trailing_newline: false,
+            ws_config: Default::default(),
             default_auto_escape: Arc::new(|_| AutoEscape::None),
         },
     )
