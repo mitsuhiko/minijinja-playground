@@ -80,7 +80,7 @@ pub fn instructions(template: &str) -> Result<JsValue, JsError> {
         "<string>",
         template,
         &TemplateConfig {
-            syntax_config: machinery::SyntaxConfig,
+            syntax_config: Default::default(),
             ws_config: Default::default(),
             default_auto_escape: Arc::new(|_| AutoEscape::None),
         },
