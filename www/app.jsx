@@ -61,9 +61,11 @@ const Editor = ({
   template,
   templateContext,
   mode,
+  pyCompat,
   onTemplateChange,
   onTemplateContextChange,
   onSetMode,
+  onSetPyCompat,
   outputHeight,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -87,7 +89,30 @@ const Editor = ({
         setWidthBase(0);
       }}
     >
-      <div style={{ flex: "1" }}>
+      <div style={{ flex: "1", position: "relative" }}>
+        <div
+          style={{
+            position: "absolute",
+            right: "10px",
+            top: "10px",
+            zIndex: 1000,
+            display: "flex",
+            gap: "8px"
+          }}
+        >
+          <select
+            value={pyCompat ? "pycompat" : "normal"}
+            onChange={(evt) => onSetPyCompat(evt.target.value == "pycompat")}
+          >
+            <option value="pycompat">pycompat enabled</option>
+            <option value="normal">pycompat disabled</option>
+          </select>
+          <select value={mode} onChange={(evt) => onSetMode(evt.target.value)}>
+            <option value="html">.html</option>
+            <option value="json">.json</option>
+            <option value="text">.txt</option>
+          </select>
+        </div>
         <AceEditor
           mode="nunjucks"
           theme="cobalt"
@@ -130,23 +155,9 @@ const Editor = ({
           flex: "1",
           flexBasis: width + "px",
           flexGrow: "0",
-          flexShrink: "0",
+          flexShrink: "0"
         }}
       >
-        <select
-          style={{
-            position: "absolute",
-            right: "10px",
-            top: "10px",
-            zIndex: 1000,
-          }}
-          value={mode}
-          onChange={(evt) => onSetMode(evt.target.value)}
-        >
-          <option value="html">HTML</option>
-          <option value="json">JSON</option>
-          <option value="text">Text</option>
-        </select>
         <AceEditor
           mode="json"
           theme="cobalt"
@@ -186,6 +197,23 @@ const OUTPUT_PRE_STYLES = {
   fontSize: "var(--code-font-size)",
 };
 
+const OUTPUT_FRAME_WRAPPER_STYLES = {
+  height: "100%",
+  background: "white",
+  margin: "0",
+  padding: "0",
+  overflow: "hidden",
+};
+
+const OUTPUT_FRAME_STYLES = {
+  ...OUTPUT_PRE_STYLES,
+  background: "white",
+  border: "0",
+  padding: "0",
+  width: "100%",
+  height: "100%",
+};
+
 const Error = ({ error }) => {
   return (
     <pre
@@ -200,19 +228,35 @@ const Error = ({ error }) => {
   );
 };
 
-const RenderOutput = ({ mode, template, templateContext }) => {
+const RenderOutput = ({ mode, html, pyCompat, template, templateContext }) => {
   const templateName = `template.${mode}`;
   let result;
   try {
     result = wasm
-      .create_env({
-        [templateName]: template,
-      })
+      .create_env(
+        {
+          [templateName]: template,
+        },
+        pyCompat
+      )
       .render(templateName, JSON.parse(templateContext));
   } catch (err) {
     return <Error error={err} />;
   }
-  return <pre style={OUTPUT_PRE_STYLES}>{(result || "") + ""}</pre>;
+
+  if (html) {
+    return (
+      <div style={OUTPUT_FRAME_WRAPPER_STYLES}>
+        <iframe
+          style={OUTPUT_FRAME_STYLES}
+          sandbox="allow-same-origin"
+          srcDoc={(result || "") + ""}
+        />
+      </div>
+    );
+  } else {
+    return <pre style={OUTPUT_PRE_STYLES}>{(result || "") + ""}</pre>;
+  }
 };
 
 const TokenOutput = ({ template }) => {
@@ -277,7 +321,9 @@ const InstructionsOutput = ({ template }) => {
       {result.map(([blockName, instructions]) => {
         return [
           <tr>
-            <th colspan="3" style={{textAlign: 'left'}}>{blockName}:</th>
+            <th colspan="3" style={{ textAlign: "left" }}>
+              {blockName}:
+            </th>
           </tr>,
           ...instructions.map((instr, idx) => {
             return (
@@ -300,7 +346,7 @@ const InstructionsOutput = ({ template }) => {
   );
 };
 
-const Output = ({ mode, template, templateContext, height }) => {
+const Output = ({ mode, pyCompat, template, templateContext, height }) => {
   const [outputMode, setOutputMode] = useState("render");
   return (
     <div
@@ -320,14 +366,17 @@ const Output = ({ mode, template, templateContext, height }) => {
         value={outputMode}
         onChange={(evt) => setOutputMode(evt.target.value)}
       >
-        <option value="render">Rendered Output</option>
+        <option value="render">Rendered Text</option>
+        <option value="render-html">Rendered HTML</option>
         <option value="tokens">Tokens</option>
         <option value="ast">AST</option>
         <option value="instructions">Instructions</option>
       </select>
-      {outputMode === "render" && (
+      {(outputMode === "render" || outputMode === "render-html") && (
         <RenderOutput
           mode={mode}
+          html={outputMode == "render-html"}
+          pyCompat={pyCompat}
           template={template}
           templateContext={templateContext}
         />
@@ -343,6 +392,7 @@ const Output = ({ mode, template, templateContext, height }) => {
 
 export function App({}) {
   const [mode, setMode] = useState("html");
+  const [pyCompat, setPyCompat] = useState(false);
   const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
   const [templateContext, setTemplateContext] = useState(() =>
     JSON.stringify(DEFAULT_CONTEXT, null, 2)
@@ -376,6 +426,8 @@ export function App({}) {
         onTemplateContextChange={setTemplateContext}
         mode={mode}
         onSetMode={setMode}
+        pyCompat={pyCompat}
+        onSetPyCompat={setPyCompat}
         outputHeight={outputHeight}
       />
       <div
@@ -392,6 +444,7 @@ export function App({}) {
       />
       <Output
         mode={mode}
+        pyCompat={pyCompat}
         template={template}
         templateContext={templateContext}
         height={outputHeight}

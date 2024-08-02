@@ -1,11 +1,9 @@
 use minijinja::machinery::TemplateConfig;
-use minijinja::AutoEscape;
+use minijinja::{machinery, AutoEscape, Environment};
+
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
-
-use minijinja::machinery;
-use minijinja::Environment;
 
 #[wasm_bindgen]
 pub fn set_panic_hook() {
@@ -38,9 +36,13 @@ impl JsExposedEnv {
 }
 
 #[wasm_bindgen]
-pub fn create_env(templates: JsValue) -> Result<JsExposedEnv, JsError> {
+pub fn create_env(templates: JsValue, pycompat: bool) -> Result<JsExposedEnv, JsError> {
     let templates: HashMap<String, String> = serde_wasm_bindgen::from_value(templates)?;
     let mut env = Environment::new();
+    minijinja_contrib::add_to_environment(&mut env);
+    if pycompat {
+        env.set_unknown_method_callback(minijinja_contrib::pycompat::unknown_method_callback);
+    }
     env.set_debug(true);
     for (name, template) in templates.into_iter() {
         env.add_template_owned(name, template)
