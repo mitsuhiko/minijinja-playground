@@ -315,7 +315,15 @@ const InstructionsOutput = ({ template }) => {
   } catch (err) {
     return <Error error={err} />;
   }
-  console.log(result);
+
+  function converter(key, value) {
+    if (value instanceof Map) {
+      return Object.fromEntries(value.entries());
+    } else {
+      return value;
+    }
+  }
+
   return (
     <table style={{ margin: "12px", maxWidth: "100%" }}>
       {result.map(([blockName, instructions]) => {
@@ -335,7 +343,7 @@ const InstructionsOutput = ({ template }) => {
                   </code>
                 </td>
                 <td>
-                  <code>{JSON.stringify(instr.arg)}</code>
+                  <code>{JSON.stringify(instr.arg, converter)}</code>
                 </td>
               </tr>
             );
