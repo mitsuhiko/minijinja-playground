@@ -72,7 +72,7 @@ fn convert_instructions<'a, 'source>(
     instructions: &'a machinery::Instructions<'source>,
 ) -> Vec<&'a machinery::Instruction<'source>> {
     (0..instructions.len())
-        .map(|idx| instructions.get(idx).unwrap())
+        .map(|idx| instructions.get(idx as u32).unwrap())
         .collect::<Vec<_>>()
 }
 
