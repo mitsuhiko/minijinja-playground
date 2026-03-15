@@ -239,7 +239,7 @@ const RenderOutput = ({ mode, html, pyCompat, template, templateContext }) => {
         },
         pyCompat
       )
-      .render(templateName, JSON.parse(templateContext));
+      .render(templateName, templateContext);
   } catch (err) {
     return <Error error={err} />;
   }

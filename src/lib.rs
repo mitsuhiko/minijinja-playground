@@ -28,9 +28,10 @@ fn annotate_error(err: minijinja::Error) -> JsError {
 
 #[wasm_bindgen]
 impl JsExposedEnv {
-    pub fn render(&self, template: &str, context: JsValue) -> Result<String, JsError> {
+    pub fn render(&self, template: &str, context_json: &str) -> Result<String, JsError> {
         let tmpl = self.env.get_template(template).map_err(annotate_error)?;
-        let context: serde_json::Value = serde_wasm_bindgen::from_value(context)?;
+        let context: serde_json::Value = serde_json::from_str(context_json)
+            .map_err(|err| JsError::new(&format!("invalid JSON context: {err}")))?;
         Ok(tmpl.render(context).map_err(annotate_error)?)
     }
 }
